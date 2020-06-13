@@ -15,7 +15,7 @@ def ler_sequencia_arq(nome:str, sequencia, excessao=[]):
             arquivo.close()
     return dataset
 
-def ler_arq(diretorio, nome_arq, sep=','):
+def ler_arq(diretorio: str, nome_arq: str, sep=','):
     dataset = []
     arquivo = open(diretorio + nome_arq, 'r')
     for linha in arquivo:
