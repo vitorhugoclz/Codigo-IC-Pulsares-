@@ -1,46 +1,50 @@
 import math
+import leitura_arquivo as le
+from metricas import Metricas
+import salvar_arquivo as sa
 
 class RedeEuclidiana():
-    def __init__(self, beta: float, ro: float):
+    def __init__(self, beta: float, ro: float, potencia=2):
         self.beta = beta
         self.ro = ro
         self.w_pesos = []
         self.rotulos_neuronios = []
+        self.potencia = potencia
 
     def montagem_categoria(self, entrada):
-        def subtracao_vetores_quadrado(vetor1: list, vetor2: list) -> list:
+        def subtracao_vetores_p(vetor1: list, vetor2: list) -> list:
             """faz a diferenca de dois vetores de mesmo tamanho"""
             resultado = []
             try:
                 for i in range(len(vetor1)):
-                    resultado.append((vetor1[i] - vetor2[i]) ** 2)
+                    resultado.append((abs(vetor1[i] - vetor2[i])) ** self.potencia)
             except:
                 print('Tamanho de vetores nao e igual')
             return resultado
 
         categorias = []
         for i in self.w_pesos:
-            aux = subtracao_vetores_quadrado(entrada, i)
+            aux = subtracao_vetores_p(entrada, i)
             somatoria = sum(aux)
-            categorias.append(math.sqrt(somatoria))
+            categorias.append(somatoria ** (1 / self.potencia))
         return categorias
 
     def peso_M(self, t_valor, entrada: list, w_peso: list):
         """Calcula o Mj, segundo a entrada neuronio e Tj"""
-        def lista_quadrado(lista: list) -> list:
+        def lista_elevado_p(lista: list) -> list:
             lista1 = []
             for i in lista:
-                lista1.append(i * i)
+                lista1.append(abs(i) ** self.potencia)
             return lista1
 
-        entrada = lista_quadrado(entrada)  # faz o quadrado, indice a indice
-        w_peso = lista_quadrado(w_peso)  # faz o quadrado, indice a indice
+        entrada = lista_elevado_p(entrada)  # faz o quadrado, indice a indice
+        w_peso = lista_elevado_p(w_peso)  # faz o quadrado, indice a indice
         somatoria_entrada = sum(entrada)
         somatoria_w_peso = sum(w_peso)
         if somatoria_entrada >= somatoria_w_peso:
-            return t_valor / math.sqrt(somatoria_entrada)
+            return t_valor / (somatoria_entrada ** (1/self.potencia))
         else:
-            return t_valor / math.sqrt(somatoria_w_peso)
+            return t_valor / (somatoria_w_peso ** (1/self.potencia))
 
     def ressonancia_adptativa(self, input, w_peso):
         def mult_list_cont(constante: float, lista: list) -> list:
@@ -133,10 +137,35 @@ class RedeEuclidiana():
         return classificacoes
 
 if __name__ == '__main__':
-    entradas = [[1, 1.2], [1, 1.8], [1, 1.1], [1.1, 1.6], [1.3, 1.2], [1.4, 1.5], [1.6, 1], [1.3, 1.4],
-                [1.5, 1.5], [1.2, 1.9]]
-    classe = [0, 1, 0, 0, 1, 1, 0, 0, 1, 0]
+    '''entradas = [[1, 1.2], [1, 1.8], [1, 1.1], [1.1, 1.6]]
+    classe = [0, 1, 0, 0]
     rede = RedeEuclidiana(0.1, 0.2)
     rede.iniciar_treino(entradas, classe)
     print(rede.w_pesos)
-    print(rede.rotulos_neuronios)
+    print(rede.rotulos_neuronios)'''
+    def gerar_intervalor(inicio, fim , passo):
+        lista = []
+        while(inicio <= fim):
+            lista.append(round(inicio, 4))
+            inicio += passo
+        return lista
+
+    beta = 0.15
+    rho_lista = gerar_intervalor(0.05, 0.5, 0.01)
+    rho = 0.093
+    for rho in rho_lista:
+        dataset_treino = le.ler_arq('dataSet/', 'Cancer478.txt', ' ')
+        dataset_analise = le.ler_arq('dataSet/', 'Cancer205.txt', ' ')
+        dados_treino, rotulos_treino = le.remover_coluna(dataset_treino)
+        dados_analise, rotulos_analise = le.remover_coluna(dataset_analise)
+
+        rede = RedeEuclidiana(beta, rho)
+        rede.iniciar_treino(dados_treino, rotulos_treino)
+        #print(rede.w_pesos)
+        #print(f"rotulos dos neuronios {rede.rotulos_neuronios}")
+        rede_classificados = rede.classificar(dados_analise)
+        #print("classificou")
+        metricas = Metricas()
+        metricas.calcular_valores(rede_classificados, rotulos_analise)
+        #print(metricas)
+        sa.salvar_validation_euclidiana(beta, rho, len(rede.w_pesos), metricas)

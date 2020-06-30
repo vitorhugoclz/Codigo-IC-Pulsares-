@@ -1,3 +1,5 @@
+from builtins import int
+
 import rotulos as rot
 import leitura_arquivo as le
 from metricas import Metricas
@@ -17,14 +19,15 @@ class RedeFuzzy():
         :param rotulos_entrada: rotulos
         :return: None
         """
+        entrada_nova = []
         for i in range(len(entrada)):
-            entrada[i] = self.normalizacao_vetor(entrada[i])
+            entrada_nova.append(self.normalizacao_vetor(entrada[i]))
 
-        entrada = self.codificacao_entrada(entrada)
-        self.w_pesos.append(entrada[0].copy())
+        entrada_nova = self.codificacao_entrada(entrada_nova)
+        self.w_pesos.append(entrada_nova[0].copy())
         Ncat = len(self.w_pesos)
         vencedores = [0]
-        for i_entrada in entrada[1:]:
+        for i_entrada in entrada_nova[1:]:
             Ncont = 1
             flag = True
             t_categoria = self.montagem_categoria(i_entrada)
@@ -123,26 +126,45 @@ class RedeFuzzy():
         return lista
 
     def classificar(self, entrada_analise):
+        entrada_analise_nova = []
         for i in range(len(entrada_analise)):
-            entrada_analise[i] = self.normalizacao_vetor(entrada_analise[i])
+            entrada_analise_nova.append(self.normalizacao_vetor(entrada_analise[i]))
 
-        entrada_analise = self.codificacao_entrada(entrada_analise)
+        entrada_analise_nova = self.codificacao_entrada(entrada_analise_nova)
         classificacoes = []
-        for i in entrada_analise:
+        for i in entrada_analise_nova:
             lista_categoria = self.montagem_categoria(i)
             indice_w = lista_categoria.index(max(lista_categoria))
             classificacoes.append(self.rotulos_neuronios[indice_w])
         return classificacoes
 
+    def resetar_neuronios(self):
+        self.w_pesos.clear()
+        self.rotulos_neuronios.clear()
+
+
 if __name__ == '__main__':
-    rede = RedeFuzzy(0.1,0.1,0.99)
-    dataset_treino = le.ler_arq('dataSet/', 'Cancer478.txt', ' ')
-    dataset_analise = le.ler_arq('dataSet/', 'Cancer205.txt', ' ')
+    def gerar_intervalor(inicio, fim , passo):
+        lista = []
+        while(inicio <= fim):
+            lista.append(round(inicio, 4))
+            inicio += passo
+        return lista
+    alfa = 0.1
+    beta = 0.2
+    rho_lista = gerar_intervalor(0.9, 0.901, 0.001)
+    dataset_treino = le.ler_arq('dataSet/', 'train_data.txt', ',')
+    dataset_analise = le.ler_arq('dataSet/', 'test_data.txt', ',')
     dados_treino, rotulos_treino = le.remover_coluna(dataset_treino)
     dados_analise, rotulos_analise = le.remover_coluna(dataset_analise)
+    rho = 0.95
+    #for rho in rho_lista:
+    rede = RedeFuzzy(alfa, beta, rho)
     rede.iniciar_treino(dados_treino, rotulos_treino)
+    print(f"rotulos dos neuronios {rede.rotulos_neuronios}")
     rede_classificados = rede.classificar(dados_analise)
+    print("classificou")
     metricas = Metricas()
     metricas.calcular_valores(rede_classificados, rotulos_analise)
-    sa.salvar_validation_fuzzy(0.1,0.1,0.99, len(rede.w_pesos), metricas)
-    print(rede)
+    print(metricas)
+    sa.salvar_validation_fuzzy(alfa,beta,rho, len(rede.w_pesos), metricas)
